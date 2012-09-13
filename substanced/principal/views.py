@@ -7,6 +7,7 @@ from ..form import FormView
 from ..sdi import mgmt_view
 from ..schema import Schema
 from ..content import find_service
+from ..objectmap import find_objectmap
 
 from ..interfaces import (
     IUsers,
@@ -18,6 +19,7 @@ from ..interfaces import (
 from . import (
     UserSchema,
     GroupSchema,
+    UserToGroup,
     )
 
 class AddUserSchema(UserSchema):
@@ -55,7 +57,10 @@ class AddUserView(FormView):
         groups = appstruct.pop('groups')
         user = registry.content.create('User', **appstruct)
         self.context[name] = user
-        user.connect(*groups)
+        objectmap = find_objectmap(self.context)
+        if groups:
+            for group_id in groups:
+                objectmap.connect(user, group_id, UserToGroup)
         return HTTPFound(self.request.mgmt_path(self.context))
 
 @mgmt_view(
@@ -76,7 +81,10 @@ class AddGroupView(FormView):
         members = appstruct.pop('members')
         group = registry.content.create('Group', **appstruct)
         self.context[name] = group
-        group.connect(*members)
+        objectmap = find_objectmap(self.context)
+        if members:
+            for member_id in members:
+                objectmap.connect(group, member_id, UserToGroup)
         return HTTPFound(self.request.mgmt_path(self.context))
 
 @colander.deferred
